@@ -1,0 +1,45 @@
+---
+- name: Implementing tags
+  hosts: all
+  tasks:
+    - name: Install nginx
+      apt:
+        name: nginx
+        state: present
+        update_cache: yes
+      tags:
+        - install
+        - nginx_install
+        - always
+    - name: Install tomcat10
+      apt:
+        name: tomcat10
+        state: present
+        update_cache: no
+      tags:
+        - install
+        - tomcat_install
+    - name: Restart nginx
+      service:
+        name: nginx
+        state: restarted
+      tags:
+        - restart
+        - nginx_restart
+        - never
+    - name: Restart tomcat
+      service:
+        name: tomcat10
+        state: restarted
+      tags:
+        - restart
+        - tomcat_restart
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,13 @@
+---
+- name: Implementing host scope variables
+  hosts: 172.31.71.247
+  tasks:
+    - name: User creation
+      user:
+        name: "{{a}}"
+        password: "{{b}}"
+        uid: "{{c}}"
+        home: "{{d}}"
+        comment: "{{e}}"
+        shell: "{{f}}"
+...

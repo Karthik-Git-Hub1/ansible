@@ -1,0 +1,10 @@
+---
+- name: Install git on all servers
+  hosts: all
+  tasks:
+    - name: Git Installation
+      apt:
+        name: git
+        state: present
+        update_cache: yes
+...

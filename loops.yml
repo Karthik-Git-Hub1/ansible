@@ -1,0 +1,13 @@
+---
+- name: Using Loops in ansible
+  hosts: all
+  tasks:
+    - name: Install s/w apps's
+      apt:
+        name: "{{item}}"
+        state: present
+        update_cache: yes
+      loop:
+        - tree
+        - git
+        - maven

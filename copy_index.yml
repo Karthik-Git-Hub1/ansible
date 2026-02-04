@@ -1,0 +1,6 @@
+---
+- name: Copy customised index.html file
+  copy:
+    src: index.html
+    dest: /var/www/html
+...
