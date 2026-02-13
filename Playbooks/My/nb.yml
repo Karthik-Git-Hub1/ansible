@@ -1,0 +1,30 @@
+---
+- name: Install NB_Security.deb on multiple systems
+  hosts: all
+  become: yes  # To execute commands with root privileges
+
+  vars:
+    primary_user: ansible
+    primary_password: NBansi613 # or use SSH keys for authentication
+    fallback_user: nobroker
+    fallback_password: nobroker # or use SSH keys for authentication
+    ansible_timeout: 5  # Set the timeout to 5 seconds
+
+  tasks:
+    - name: Copy NB_Security.deb file to the target systems
+      copy:
+        src: /home/karthik/NB_Security.deb  # Update the path to your .deb file
+        dest: /tmp/NB_Security.deb
+        mode: 0644  # Adjust permissions as needed
+
+    - name: Install the NB_Security.deb package
+      dpkg:
+        deb: /tmp/NB_Security.deb
+        state: present
+      become: yes
+      register: dpkg_install_result
+
+    - name: Handle errors during package installation
+      fail:
+        msg: "Failed to install NB_Security.deb: {{ dpkg_install_result.msg }}"
+      when: dpkg_install_result.failed

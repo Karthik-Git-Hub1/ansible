@@ -1,0 +1,29 @@
+---
+- name: Remove BleachBit
+  hosts: all
+  gather_facts: false
+  become: yes
+  become_user: root
+
+  vars:
+    primary_user: ansible
+    primary_password: NBansi613
+    fallback_user: nobroker
+    fallback_password: nobroker
+
+  tasks:
+    - name: Remove BleachBit using apt with primary credentials
+      expect:
+        command: sudo apt-get remove aisleroit -y
+        responses:
+          '.*password.*': "{{ primary_password }}"
+      register: apt_task_result
+      ignore_errors: yes
+
+    - name: Retry with fallback credentials if the task fails
+      expect:
+        command: sudo apt-get remove aisleroit -y
+        responses:
+          '.*password.*': "{{ fallback_password }}"
+      when: apt_task_result is failed
+

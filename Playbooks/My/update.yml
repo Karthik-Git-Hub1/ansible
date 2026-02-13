@@ -1,0 +1,26 @@
+---
+- name: Run Shell Script on Multiple Systems
+  hosts: all
+  become: yes
+
+  vars:
+    ansible_ssh_user: ansible  # Replace with your SSH username
+    ansible_ssh_pass: NBansi613  # Or use SSH keys for authentication
+    ansible_become_pass: NBansi613  # If become is used, replace with your sudo password
+
+  tasks:
+    - name: Copy the shell script to the remote machines
+      copy:
+        src: /home/karthik/update.sh  # Path to your local shell script
+        dest: /home/ansible/update.sh  # Destination path on the remote machines
+        mode: +x  # Make the script executable
+
+    - name: Run the shell script
+      command: "/home/ansible/update.sh"
+      register: script_output
+      ignore_errors: true
+
+    - name: Print script output
+      debug:
+        var: script_output
+

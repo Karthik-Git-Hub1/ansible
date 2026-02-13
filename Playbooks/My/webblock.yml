@@ -1,0 +1,27 @@
+---
+- name: Unblock YouTube
+  hosts: all
+  become: yes
+
+  vars:
+    ansible_ssh_user: ansible
+    ansible_ssh_pass: NBansi613
+    ansible_become_pass: NBansi613
+
+  tasks:
+    - name: Define an array of host entries to unblock
+      set_fact:
+        entries:
+          - "www.youtube.com"
+
+    - name: Loop through each entry and remove from the hosts file
+      lineinfile:
+        path: /etc/hosts
+        state: absent
+        line: "{{ item }}"
+      loop: "{{ entries }}"
+      when: "'{{ item }}' in lookup('file', '/etc/hosts')"
+
+    - name: Notify users about the changes
+      debug:
+        msg: "YouTube unblocked successfully."

@@ -1,0 +1,44 @@
+---
+ - name: Clean up system
+  hosts: all
+  become: yes 
+
+   vars:
+    ansible_ssh_user: ansible
+    ansible_ssh_pass: NBansi613
+    ansible_become_pass: NBansi613
+
+  tasks:
+   
+        - name: Remove snaps
+      snap:
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - chromium
+        - slack
+        - firefox
+        - whatsapp-for-linux
+
+    - name: Remove specified packages
+      apt:
+        name: "{{ item }}"
+        state: absent
+        autoremove: yes
+      loop:
+        - aisleriot*
+        - gnome-mines*
+        - gnome-sudoku*
+        - gnome-mahjongg*
+        - dell-recovery*
+        - rhythmbox*
+        - firefox*
+        - zoom*
+        - totem*
+        - thunderbird*
+      when: ansible_os_family == 'Debian'
+
+    - name: Autoremove unused packages
+      apt:
+        autoremove: yes
+        autoclean: yes

@@ -1,0 +1,31 @@
+---
+- name: Remove Firefox
+  hosts: all
+  gather_facts: false
+
+  vars:
+    primary_user: ansible
+    primary_password: NBansi613
+    fallback_user: nobroker
+    fallback_password: nobroker
+    firefox_package_name: firefox  
+    output_file: ansible_output.txt  
+
+  tasks:
+    - name: Remove Firefox using apt with primary credentials
+      become: yes
+      shell: |
+        echo '{{ primary_password }}' | sudo apt purge -y {{ firefox_package_name }} > {{ output_file }}
+      register: apt_task_result_primary
+      ignore_errors: yes
+
+    - name: Retry with fallback credentials if the task fails
+      block:
+        - name: Remove Firefox using apt with fallback credentials
+          become: yes
+          shell: |
+            echo '{{ fallback_password }}' | sudo apt purge -y {{ firefox_package_name }} >> {{ output_file }}
+          register: apt_task_result_fallback
+          ignore_errors: yes
+      when: apt_task_result_primary is failed
+

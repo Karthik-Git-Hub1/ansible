@@ -1,0 +1,15 @@
+---
+- name: Add SSH keys to known_hosts file
+  hosts: localhost  # Specify localhost as the target host
+  gather_facts: no
+
+  tasks:
+    - name: Read IP addresses from file
+      shell: cat ip
+      register: ip_addresses
+      changed_when: false
+
+    - name: Loop through IP addresses and run ssh-keyscan
+      shell: ssh-keyscan -T 5 {{ item }} >> ~/.ssh/known_hosts
+      loop: "{{ ip_addresses.stdout_lines }}"
+

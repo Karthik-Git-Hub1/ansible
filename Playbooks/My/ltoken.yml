@@ -1,0 +1,24 @@
+---
+- name: Create directory and copy file
+  hosts: all
+  become: yes
+
+  vars:
+    ansible_ssh_user: admin
+    ansible_ssh_pass: NBit_1@#$
+    ansible_become_pass: NBit_1@#$
+
+  tasks:
+    - name: Create directory
+      become: yes
+      file:
+        path: /home/admin/etc/opt/chrome/policies/enrollment
+        state: directory
+        mode: 0755
+
+    - name: Copy file to remote system
+      become: yes
+      copy:
+        src: /home/karthik/CloudManagementEnrollmentToken
+        dest: /etc/opt/chrome/policies/enrollment/
+        mode: 0644

@@ -1,0 +1,105 @@
+---
+- name: Ensure Users Presence with Roles and Passwords
+  hosts: all
+  gather_facts: false
+
+  vars:
+    primary_user: ansible
+    primary_password: NBansi613
+    fallback_user: nobroker
+    fallback_password: nobroker
+    ansible_ssh_user: "{{ primary_user }}"
+    ansible_ssh_pass: "{{ primary_password }}"
+    output_file: "execution_output.txt"
+
+  tasks:
+    - name: Ensure the admin group exists
+      group:
+        name: "{{ admin_group }}"
+        state: present
+
+    - name: Check and create users with primary credentials
+      user:
+        name: "{{ item.name }}"
+        password: "{{ item.password | password_hash('sha512') }}"
+        state: present
+        group: "{{ item.group }}"
+      loop:
+        - { name: "{{ fallback_user }}", password: "{{ fallback_password }}", group: "users" }
+        - { name: "{{ primary_user }}", password: "{{ primary_password }}", group: "{{ admin_group }}" }
+      register: user_creation_output
+
+    - name: Ensure correct group memberships with primary credentials
+      user:
+        name: "{{ item.name }}"
+        groups: "{{ item.groups }}"
+      loop:
+        - { name: "{{ fallback_user }}", groups: "users" }
+        - { name: "{{ primary_user }}", groups: "{{ admin_group }}" }
+      when: item.name in ansible_facts.getent_passwd.keys()
+      register: group_membership_output
+
+    - name: Update SSH credentials to fallback if primary credentials fail
+      set_fact:
+        ansible_ssh_user: "{{ fallback_user }}"
+        ansible_ssh_pass: "{{ fallback_password }}"
+      when: "'{{ primary_user }}' in ansible_facts.getent_passwd.keys() and ssh_test_failed | default(false)"
+      register: ssh_credentials_update_output
+
+    - name: Test SSH connection
+      command: echo "Testing SSH connection"
+      ignore_errors: true
+      register: ssh_test_result
+      changed_when: false
+      register: ssh_test_output
+
+    - name: Set flag if SSH test failed
+      set_fact:
+        ssh_test_failed: "{{ ssh_test_result.rc != 0 }}"
+      when: "'{{ primary_user }}' in ansible_facts.getent_passwd.keys()"
+      register: ssh_test_failed_output
+
+    - name: Check and create users with fallback credentials
+      user:
+        name: "{{ item.name }}"
+        password: "{{ item.password | password_hash('sha512') }}"
+        state: present
+        group: "{{ item.group }}"
+      loop:
+        - { name: "{{ fallback_user }}", password: "{{ fallback_password }}", group: "users" }
+        - { name: "{{ primary_user }}", password: "{{ primary_password }}", group: "{{ admin_group }}" }
+      when: ssh_test_failed_output | default(false)
+      register: fallback_user_creation_output
+
+    - name: Ensure correct group memberships with fallback credentials
+      user:
+        name: "{{ item.name }}"
+        groups: "{{ item.groups }}"
+      loop:
+        - { name: "{{ fallback_user }}", groups: "users" }
+        - { name: "{{ primary_user }}", groups: "{{ admin_group }}" }
+      when: item.name in ansible_facts.getent_passwd.keys() and ssh_test_failed_output | default(false)
+      register: fallback_group_membership_output
+
+    - name: Store output details in a text file
+      copy:
+        content: |
+          User Creation Output:
+          {{ user_creation_output | to_nice_yaml }}
+
+          Group Membership Output:
+          {{ group_membership_output | to_nice_yaml }}
+
+          SSH Credentials Update Output:
+          {{ ssh_credentials_update_output | to_nice_yaml }}
+
+          SSH Test Output:
+          {{ ssh_test_output | to_nice_yaml }}
+
+          Fallback User Creation Output:
+          {{ fallback_user_creation_output | to_nice_yaml }}
+
+          Fallback Group Membership Output:
+          {{ fallback_group_membership_output | to_nice_yaml }}
+        dest: "{{ output_file }}"
+

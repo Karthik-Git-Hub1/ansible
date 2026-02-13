@@ -1,0 +1,19 @@
+---
+- name: Deploy and run script
+  hosts: all
+  become: yes
+
+  vars:
+    ansible_ssh_user: ansible
+    ansible_ssh_pass: NBansi613
+    ansible_become_pass: NBansi613
+
+  tasks:
+    - name: Copy script file to remote systems
+      copy:
+        src: /home/karthik/uninstall.sh
+        dest: /home/ansible/uninstall.sh
+        mode: 0755  # Set appropriate permissions
+
+    - name: Run the script on remote systems
+      shell: /home/ansible/uninstall.sh

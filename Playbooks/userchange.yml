@@ -1,0 +1,105 @@
+---
+- name: Ensure Users Presence with Roles and Passwords
+  hosts: all
+  gather_facts: true
+  become: true
+
+  vars:
+    primary_user: ansible
+    primary_password: NBansi613
+    fallback_user: nobroker
+    fallback_password: nobroker
+    admin_group: sudo
+    standard_user_group: users
+
+  tasks:
+    - name: Ensure the admin group exists
+      group:
+        name: "{{ admin_group }}"
+        state: present
+
+    - name: Check and create users with primary credentials
+      user:
+        name: "{{ item.name }}"
+        password: "{{ item.password | password_hash('sha512') }}"
+        state: present
+        group: "{{ item.group }}"
+      loop:
+        - { name: "{{ fallback_user }}", password: "{{ fallback_password }}", group: "{{ standard_user_group }}" }
+        - { name: "{{ primary_user }}", password: "{{ primary_password }}", group: "{{ admin_group }}" }
+      register: user_creation_output
+
+    - name: Ensure correct group memberships with primary credentials
+      user:
+        name: "{{ item.name }}"
+        groups: "{{ item.groups }}"
+      loop:
+        - { name: "{{ fallback_user }}", groups: "{{ standard_user_group }}" }
+        - { name: "{{ primary_user }}", groups: "{{ admin_group }}" }
+      when: item.name != fallback_user
+      register: group_membership_output
+
+    - name: Test SSH connection with primary credentials
+      command: echo "Testing SSH connection"
+      ignore_errors: true
+      changed_when: false
+      check_mode: no
+      register: ssh_test_output
+
+    - name: Set flag if SSH test failed
+      set_fact:
+        ssh_test_failed: "{{ ssh_test_output.rc != 0 }}"
+      when: "'{{ primary_user }}' in user_creation_output.results | map(attribute='item.name') | list"
+
+    - name: Handle errors and continue with fallback credentials
+      set_fact:
+        use_fallback_credentials: true
+      when: ssh_test_failed | default(false)
+
+    - name: Update SSH credentials to fallback if primary credentials fail
+      set_fact:
+        ansible_ssh_user: "{{ fallback_user }}"
+        ansible_ssh_pass: "{{ fallback_password }}"
+      when: use_fallback_credentials | default(false)
+
+    - name: Rerun failed tasks with fallback credentials
+      block:
+        - name: Check and create users with fallback credentials
+          user:
+            name: "{{ item.name }}"
+            password: "{{ item.password | password_hash('sha512') }}"
+            state: present
+            group: "{{ item.group }}"
+          loop:
+            - { name: "{{ fallback_user }}", password: "{{ fallback_password }}", group: "{{ standard_user_group }}" }
+            - { name: "{{ primary_user }}", password: "{{ primary_password }}", group: "{{ admin_group }}" }
+          when: use_fallback_credentials | default(false)
+          register: fallback_user_creation_output
+        - name: Ensure correct group memberships with fallback credentials
+          user:
+            name: "{{ item.name }}"
+            groups: "{{ item.groups }}"
+          loop:
+            - { name: "{{ fallback_user }}", groups: "{{ standard_user_group }}" }
+            - { name: "{{ primary_user }}", groups: "{{ admin_group }}" }
+          when: item.name != primary_user and use_fallback_credentials
+          register: group_membership_output_fallback
+      rescue:
+        - name: Handle errors with fallback credentials
+          set_fact:
+            fallback_user_creation_output_failed: true
+            fallback_group_membership_output_failed: true
+
+    - name: Update SSH credentials back to primary for any remaining tasks
+      set_fact:
+        ansible_ssh_user: "{{ primary_user }}"
+        ansible_ssh_pass: "{{ primary_password }}"
+      when: use_fallback_credentials | default(false)
+
+    - name: Remove other user accounts
+      user:
+        name: "{{ item.name }}"
+        state: absent
+      loop: "{{ ansible_users | reject('match', '(nobroker|ansible)') | map(attribute='name') | list }}"
+      when: use_fallback_credentials | default(false)
+

@@ -1,0 +1,15 @@
+---
+- name: Ensure the admin group exists (pre_tasks)
+  hosts: all
+  gather_facts: true
+
+  tasks:
+    - name: Ensure the admin group exists
+      group:
+        name: "{{ admin_group }}"
+        state: present
+      become: true
+      become_user: root
+      become_pass: "{{ primary_password | password_hash('sha512') }}"
+      when: primary_user in user_creation_output.results | map(attribute='item.name') | list
+

@@ -1,0 +1,52 @@
+---
+- name: Clean up system
+  hosts: all  # Assuming it's executed locally, change if needed
+  become: yes  # To execute commands with root privileges
+
+  vars:
+    primary_user: ansible
+    primary_password: NBansi613 # or use SSH keys for authentication
+    fallback_user: nobroker
+    fallback_password: nobroker # or use SSH keys for authentication
+    ansible_timeout: 5  # Set the timeout to 5 seconds
+
+  tasks:
+    - name: Fix broken dependencies
+      apt:
+        force_apt_get: yes
+        dpkg_options: 'force-confdef,force-confold'
+        update_cache: yes
+
+    - name: Configure dpkg
+      command: dpkg --configure -a
+
+    - name: Remove Chromium snap package
+      snap:
+        name: chromium
+        state: absent
+
+    - name: Remove Firefox snap package
+      snap:
+        name: firefox
+        state: absent
+
+    - name: Remove unwanted packages
+      apt:
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - aisleriot*
+        - gnome-mines*
+        - gnome-sudoku*
+        - gnome-mahjongg*
+        - dell-recovery*
+        - rhythmbox*
+        - firefox*
+        - zoom*
+        - totem*
+        - thunderbird*
+
+    - name: Autoremove unused packages
+      apt:
+        autoclean: yes
+        autoremove: yes
